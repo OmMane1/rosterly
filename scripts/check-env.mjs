@@ -150,6 +150,7 @@ function warnMissingKeys() {
   const missing = (name) => !process.env[name]?.trim() && !inFile.has(name);
   if (missing('ANTHROPIC_API_KEY')) warn('ANTHROPIC_API_KEY is not set: new searches will fail until you export it (or add it to .env.local) and restart.');
   if (missing('STRIPE_WEBHOOK_SECRET')) warn('STRIPE_WEBHOOK_SECRET is not set: /api/billing/events will answer 500 until you export it (or add it to .env.local) and restart.');
+  if (missing('STRIPE_SECRET_KEY')) warn('STRIPE_SECRET_KEY (a Stripe test-mode key) is not set: Upgrade will say checkout isn’t set up. Everything else works.');
 }
 
 const mode = process.argv[2];

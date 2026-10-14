@@ -140,6 +140,8 @@ const ROUTES: [string, string, unknown?][] = [
   ['POST', '/api/saved-briefs', { brief: 'x', filters: {} }],
   ['DELETE', `/api/saved-briefs/${NIL}`],
   ['GET', '/api/plan'],
+  ['POST', '/api/billing/checkout'],
+  ['POST', '/api/billing/portal'],
   ['GET', '/api/me'],
 ];
 
@@ -200,6 +202,36 @@ describe('GET /api/me', () => {
 });
 
 // ---- billing ----
+
+describe('POST /api/billing/checkout and /api/billing/portal', () => {
+  // The app reads the same .env.local, so this mirrors whether the server can call Stripe.
+  const HAS_STRIPE_KEY = /^(sk|rk)_test_/.test(process.env.STRIPE_SECRET_KEY?.trim() ?? '');
+  const NO_KEY = HAS_STRIPE_KEY ? ' (skipped: STRIPE_SECRET_KEY is set)' : '';
+  const KEY = HAS_STRIPE_KEY ? '' : ' (skipped: no test-mode STRIPE_SECRET_KEY)';
+  const Redirect = z.strictObject({ url: z.url() });
+
+  it('a paid company → 409 already_paid, before Stripe is involved', async () => {
+    expectError(await P.post('/api/billing/checkout'), 409, 'already_paid');
+  });
+
+  it.skipIf(HAS_STRIPE_KEY)(`without a Stripe key, checkout → 503 checkout_not_configured${NO_KEY}`, async () => {
+    expectError(await O.post('/api/billing/checkout'), 503, 'checkout_not_configured');
+  });
+
+  it.skipIf(!HAS_STRIPE_KEY)(`with a test key, checkout → 200 and a Stripe Checkout URL${KEY}`, async () => {
+    const { url } = expectBody(await O.post('/api/billing/checkout'), 200, Redirect);
+    expect(new URL(url).hostname).toBe('checkout.stripe.com');
+  });
+
+  it('a company Stripe never billed has no billing portal → 404', async () => {
+    expectError(await O.post('/api/billing/portal'), 404, 'not_found');
+  });
+
+  it('neither changes the plan or uses a search', async () => {
+    expect(expectBody(await O.get('/api/plan'), 200, PlanBody)).toEqual({ plan: 'free', searches_remaining: 1 });
+    expect(await searchesUsed(owner.companyId)).toBe(0);
+  });
+});
 
 describe('POST /api/billing/events', () => {
   // The app and this test read the same .env.local, so they share the secret; a server's own secret

@@ -21,6 +21,7 @@ function required(name: string): string {
 
 export const anthropicApiKey = () => required('ANTHROPIC_API_KEY');
 export const stripeWebhookSecret = () => required('STRIPE_WEBHOOK_SECRET');
+export const stripeSecretKey = () => required('STRIPE_SECRET_KEY');
 export const supabaseUrl = () => required('SUPABASE_URL');
 export const supabasePublishableKey = () => required('NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY');
 export const supabaseSecretKey = () => required('SUPABASE_SECRET_KEY');

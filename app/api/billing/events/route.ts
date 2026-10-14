@@ -1,4 +1,5 @@
 import { applyStripeEvent } from '@/lib/server/billing/apply-event';
+import { endDemoLater } from '@/lib/server/billing/demo-end';
 import { MAX_EVENT_BYTES, verifyStripeEvent, webhookSecret } from '@/lib/server/billing/verify';
 import { handler, json, readBody } from '@/lib/server/http';
 
@@ -12,6 +13,6 @@ export const POST = handler(async (req: Request) => {
   // The exact bytes Stripe signed: never parsed and re-serialised before verification.
   const raw = await readBody(req, MAX_EVENT_BYTES);
   const event = verifyStripeEvent(raw, req.headers.get('stripe-signature'), secret);
-  await applyStripeEvent(event);
+  if ((await applyStripeEvent(event)) === 'applied') await endDemoLater(event);
   return json({ received: true });
 });

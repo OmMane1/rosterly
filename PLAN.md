@@ -250,6 +250,7 @@ Rows added in M6 (approved by Om, 2026-10-08): the bare "N years" reading, the s
    - **Ordering:** upsert into `subscriptions` only if (created, precedence, event id) of the incoming event is greater than the stored one, so an older event can never overwrite newer state.
    - If the company can't be resolved, record the event and change nothing.
 5. Return 200 `{received: true}` for every validly signed event, including repeats and ignored ones.
+6. **Demo end (since 2026-10-14):** when a `checkout.session.completed` from our Checkout (it carries `metadata.company`) is *applied*, the handler asks Stripe to cancel that subscription in 1 hour (`cancel_at`, idempotency key = event id). Stripe's later `customer.subscription.deleted` then makes the company Free the usual way. Best effort: a failure is logged and the webhook still answers 200.
 
 **Expected `/api/plan` after each sample event** (a fresh seed starts both companies on free):
 
@@ -284,6 +285,8 @@ A **card** is `{id, full_name, avatar_url, headline, current_title, current_comp
 | `DELETE /api/saved-briefs/{id}` | none | 200 `{ok:true}` | 404 |
 | `GET /api/plan` | none | 200 `{plan:"free"\|"paid", searches_remaining: number\|null}` | none |
 | `GET /api/me` | none | 200 `{email: string\|null, company: {slug, name}}` | none |
+| `POST /api/billing/checkout` | none | 200 `{url}`: a Stripe Checkout page (test mode) for the company; the plan changes only when the webhook confirms | 409 already paid · 502 Stripe unreachable · 503 no test-mode `STRIPE_SECRET_KEY` |
+| `POST /api/billing/portal` | none | 200 `{url}`: Stripe's billing portal for the company's customer | 404 no Stripe customer yet · 502 · 503 not configured (no key, or the portal isn't set up in test mode) |
 | `POST /api/billing/events` | raw Stripe body + `Stripe-Signature` (no recruiter token) | 200 `{received:true}`, including repeats | 400 bad or missing signature · 500 secret not configured |
 
 ### 3.8 Security test (`npm run test:security`, against a running app)

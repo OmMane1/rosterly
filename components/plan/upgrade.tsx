@@ -1,14 +1,21 @@
 'use client';
 // The Upgrade dialog (PLAN.md § 3.9): what Free includes, what Paid adds, and how upgrading works.
-// While it's open it polls the plan, so the moment Stripe's webhook confirms a subscription it turns
-// into a "you're on Paid" state, and a search that hit the limit can run straight away.
+// Upgrade opens Stripe's hosted Checkout (test mode). Coming back, the dialog reopens and polls the
+// plan, so the moment Stripe's webhook confirms the subscription it turns into a "you're on Paid"
+// state, and a search that hit the limit can run straight away.
+import { useMutation } from '@tanstack/react-query';
 import { Check, CircleCheck, CreditCard, ShieldCheck, Zap } from 'lucide-react';
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { createContext, Suspense, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/components/ui/cn';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Spinner } from '@/components/ui/spinner';
+import { useToast } from '@/components/ui/toast';
+import { api } from '@/lib/client/api';
 import { useMe, usePlan } from '@/lib/client/hooks/queries';
+import { DEMO_PAID_SECONDS, PAID_PLAN, TEST_CARD } from '@/lib/shared/billing';
 
 type OpenOptions = { reason?: 'limit' | 'plan'; /** What to run once the plan is Paid (the blocked search). */ retry?: () => void };
 const UpgradeContext = createContext<(o?: OpenOptions) => void>(() => {});
@@ -23,6 +30,9 @@ export function UpgradeProvider({ children }: { children: ReactNode }) {
   return (
     <UpgradeContext.Provider value={value}>
       {children}
+      <Suspense fallback={null}>
+        <CheckoutReturn onDone={open} />
+      </Suspense>
       <Dialog open={state !== null} onOpenChange={(o) => !o && setState(null)}>
         {state && <UpgradeContent reason={state.reason ?? 'plan'} retry={state.retry} onClose={() => setState(null)} />}
       </Dialog>
@@ -30,8 +40,32 @@ export function UpgradeProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/** Back from Stripe: `?upgrade=done` reopens the dialog to watch for the webhook; `cancelled` says nothing changed. */
+function CheckoutReturn({ onDone }: { onDone: (o?: OpenOptions) => void }) {
+  const params = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const toast = useToast();
+  const upgrade = params.get('upgrade');
+  useEffect(() => {
+    if (upgrade !== 'done' && upgrade !== 'cancelled') return;
+    if (upgrade === 'done') onDone({ reason: 'plan' });
+    else toast({ title: 'Checkout cancelled. Nothing was charged and your plan is unchanged.' });
+    const rest = new URLSearchParams(params);
+    rest.delete('upgrade');
+    router.replace(rest.size ? `${pathname}?${rest}` : pathname, { scroll: false });
+  }, [upgrade, onDone, toast, params, router, pathname]);
+  return null;
+}
+
 const FREE = ['1 search in total', 'Paging is always free', 'Shortlists and saved searches'];
 const PAID = ['Unlimited searches', 'Edits and re-runs apply at once', 'Everything in Free'];
+const PRICE = `$${PAID_PLAN.amount / 100} a ${PAID_PLAN.interval}`;
+const DEMO_HOURS = DEMO_PAID_SECONDS / 3600;
+const DEMO_LENGTH = `${DEMO_HOURS} ${DEMO_HOURS === 1 ? 'hour' : 'hours'}`;
+
+/** Stripe's hosted pages are a full-page redirect; the button keeps spinning until the browser leaves. */
+const useStripeRedirect = (fn: () => Promise<{ url: string }>) => useMutation({ mutationFn: fn, onSuccess: ({ url }) => window.location.assign(url) });
 
 function UpgradeContent({ reason, retry, onClose }: { reason: 'limit' | 'plan'; retry?: () => void; onClose: () => void }) {
   const plan = usePlan(true);
@@ -45,20 +79,52 @@ function UpgradeContent({ reason, retry, onClose }: { reason: 'limit' | 'plan'; 
   // refused search needs to hear.
   const description = !paid && reason === 'limit' ? 'Paging through the results you already have stays free. Upgrade to run new searches.' : undefined;
 
-  const footer = paid ? (
-    <Button
-      className="w-full"
-      onClick={() => {
-        onClose();
-        retry?.();
-      }}
-    >
-      {retry ? 'Run the search now' : 'Continue'}
-    </Button>
-  ) : (
-    <Button variant="secondary" className="w-full" onClick={onClose}>
-      Got it
-    </Button>
+  const checkout = useStripeRedirect(api.checkout);
+  const portal = useStripeRedirect(api.billingPortal);
+  const leaving = (m: { isPending: boolean; isSuccess: boolean }) => m.isPending || m.isSuccess;
+  const failure = (paid ? portal : checkout).error;
+
+  const footer = (
+    <div className="space-y-2">
+      {failure && (
+        <p role="alert" className="text-sm text-red-700">
+          {failure.message}
+        </p>
+      )}
+      {paid ? (
+        <div className="flex flex-col-reverse gap-2 sm:flex-row">
+          <Button variant="secondary" className="w-full sm:w-auto" disabled={leaving(portal)} onClick={() => portal.mutate()}>
+            {leaving(portal) ? <Spinner /> : <CreditCard />} Manage billing
+          </Button>
+          <Button
+            className="w-full sm:flex-1"
+            onClick={() => {
+              onClose();
+              retry?.();
+            }}
+          >
+            {retry ? 'Run the search now' : 'Continue'}
+          </Button>
+        </div>
+      ) : (
+        <div className="flex flex-col-reverse gap-2 sm:flex-row">
+          <Button variant="secondary" className="w-full sm:w-auto" onClick={onClose}>
+            Not now
+          </Button>
+          <Button className="w-full sm:flex-1" disabled={plan.isPending || leaving(checkout)} onClick={() => checkout.mutate()}>
+            {leaving(checkout) ? (
+              <>
+                <Spinner /> Opening Stripe…
+              </>
+            ) : (
+              <>
+                <CreditCard /> Upgrade with Stripe
+              </>
+            )}
+          </Button>
+        </div>
+      )}
+    </div>
   );
 
   return (
@@ -68,8 +134,15 @@ function UpgradeContent({ reason, retry, onClose }: { reason: 'limit' | 'plan'; 
 
         <div className="grid grid-cols-2 gap-2.5">
           <PlanCard name="Free" items={FREE} current={!paid && !plan.isPending} />
-          <PlanCard name="Paid" items={PAID} current={paid} highlight />
+          <PlanCard name="Paid" price={PRICE} items={PAID} current={paid} highlight />
         </div>
+
+        <p className="rounded-xl bg-stone-50 px-3.5 py-2.5 text-[13px] text-stone-600 ring-1 ring-stone-200 ring-inset">
+          <span className="font-medium text-stone-800">Stripe test mode.</span>{' '}
+          {paid
+            ? `A demo upgrade ends by itself ${DEMO_LENGTH} after checkout. Manage billing cancels it sooner.`
+            : `Pay with ${TEST_CARD}, any future date and any CVC. Nothing is charged, and a demo upgrade ends after ${DEMO_LENGTH}.`}
+        </p>
 
         {!paid && (
           <section aria-labelledby="how-upgrading-works">
@@ -78,7 +151,7 @@ function UpgradeContent({ reason, retry, onClose }: { reason: 'limit' | 'plan'; 
             </h3>
             <ol className="mt-2 space-y-1.5">
               <Step n={1} icon={CreditCard}>
-                {company} subscribes through Stripe. Rosterly never sees the card.
+                {company} subscribes on Stripe’s checkout page. Rosterly never sees the card.
               </Step>
               <Step n={2} icon={ShieldCheck}>
                 Stripe confirms it to Rosterly with a signed webhook.
@@ -122,13 +195,14 @@ function Status({ loading, paid, left, company }: { loading: boolean; paid: bool
   );
 }
 
-function PlanCard({ name, items, current, highlight }: { name: string; items: string[]; current: boolean; highlight?: boolean }) {
+function PlanCard({ name, price, items, current, highlight }: { name: string; price?: string; items: string[]; current: boolean; highlight?: boolean }) {
   return (
     <div className={cn('rounded-xl px-3 py-2.5 ring-1 ring-inset', highlight ? 'bg-indigo-50/60 ring-indigo-200' : 'bg-white ring-stone-200')}>
       <div className="flex h-5 items-center justify-between gap-2">
         <p className="text-sm font-semibold">{name}</p>
         {current && <span className="bg-ink rounded-full px-2 py-px text-[11px] font-medium text-white">Current</span>}
       </div>
+      <p className="text-xs text-stone-500">{price ?? 'No card needed'}</p>
       <ul className="mt-1.5 space-y-1">
         {items.map((item) => (
           <li key={item} className="flex gap-1.5 text-[13px] leading-[1.125rem] text-stone-700">

@@ -14,9 +14,9 @@ This repo is a small recruiter app built on Next.js 16 and a local Supabase. A r
 - Seeded logins (Supabase email/password):
   - `recruiter@asterwell.test` / `rosterly-demo` for asterwell
   - `recruiter@glenfold.test` / `rosterly-demo` for glenfold
-- **Config comes from environment variables only.** Whoever runs the app exports `ANTHROPIC_API_KEY` and `STRIPE_WEBHOOK_SECRET` in their shell. Everything else (Supabase URL and keys) is generated locally by `make setup` into `.env.local`.
-  - **For local development the two keys live in the git-ignored `.env.local`, on purpose:** Om adds them there by hand, so Claude Code never has `ANTHROPIC_API_KEY` in its own environment. Next reads both the shell and `.env.local` (an exported value wins), and so do the scripts that call the model or sign webhooks. `make dev` warns only when a key is set in neither, and never prints a value.
-  - No script, test or agent writes either key into any file, prints it, or reads `.env.local` aloud (check names, never values).
+- **Config comes from environment variables only.** Whoever runs the app exports `ANTHROPIC_API_KEY` and `STRIPE_WEBHOOK_SECRET` in their shell, plus `STRIPE_SECRET_KEY` (a Stripe **test-mode** key) if Upgrade should open Stripe Checkout. Without that key, Upgrade says checkout isn't set up and everything else works. Everything else (Supabase URL and keys) is generated locally by `make setup` into `.env.local`.
+  - **For local development these keys live in the git-ignored `.env.local`, on purpose:** Om adds them there by hand, so Claude Code never has `ANTHROPIC_API_KEY` in its own environment. Next reads both the shell and `.env.local` (an exported value wins), and so do the scripts that call the model or sign webhooks. `make dev` warns only when a key is set in neither, and never prints a value.
+  - No script, test or agent writes any of these keys into any file, prints it, or reads `.env.local` aloud (check names, never values).
 - The routes, request and response shapes, and status codes are in **PLAN.md § API contract**. The contract tests (`tests/e2e/contract.test.ts`) mirror it.
 
 ## Stack (exact versions; pin exactly, never `^` or `~`)
@@ -32,7 +32,7 @@ This repo is a small recruiter app built on Next.js 16 and a local Supabase. A r
 | zod | 4.6.5 |
 | Anthropic SDK | `@anthropic-ai/sdk` 0.131.x (exact patch pinned at install) |
 | Model | `claude-haiku-5-5` |
-| Stripe SDK | `stripe` 22.6.2 (signature verification only, no API calls) |
+| Stripe SDK | `stripe` 22.6.2: signature verification, plus test-mode Checkout, the billing portal and ending demo upgrades (`lib/server/billing/stripe.ts` refuses a live key) |
 | UI | Tailwind CSS 4, shadcn/ui (Radix), lucide-react, TanStack Query 5 |
 | Tests / tooling | Vitest 5, tsx, pg (seed and integration tests only), ESLint CLI with eslint-config-next |
 
@@ -106,7 +106,7 @@ public/                  generated avatar and logo SVGs, served by the app
   - `P0429` → 429 (with `Retry-After`)
 
   An unhandled 500 always means a bug.
-- **Env:** read lazily, *inside* handlers and functions, via `lib/server/env.ts`. Never read it at module top level. `next build` must succeed with no model key and no webhook secret set.
+- **Env:** read lazily, *inside* handlers and functions, via `lib/server/env.ts`. Never read it at module top level. `next build` must succeed with no model key, no webhook secret and no Stripe key set.
 - **Next.js 16 specifics:**
   - Route `params` is a Promise (`const { id } = await params`).
   - Lint with the ESLint CLI (`next lint` no longer exists).
@@ -146,6 +146,7 @@ public/                  generated avatar and logo SVGs, served by the app
   - The client env module lists only `NEXT_PUBLIC_*` names, so even secret *names* never ship.
 - **API routes act as the signed-in recruiter.** Each request builds a supabase-js client with the publishable key plus `Authorization: Bearer <user token>`, so PostgREST applies RLS.
 - **The Supabase secret key is used only by** the seed script, test helpers and the Stripe webhook handler. All of these live in `lib/server`/`scripts`/`tests`, behind `import 'server-only'` where applicable.
+- **Stripe API calls never change the plan.** Checkout and the billing portal only open Stripe's hosted pages, and ending a demo upgrade asks Stripe to cancel it. The plan still changes only when a signed webhook arrives. The Stripe key must be test-mode (`sk_test_`/`rk_test_`).
 - **Another company's (or an unknown) id returns 404 after an explicit visibility lookup.** Never let a 0-row update or delete come back as 200. Always check the affected row count.
 - **The brief is untrusted.** It goes to the model JSON-encoded inside `<brief>` tags, with `</brief>` neutralised. The model's output is schema-constrained and enum-only, then re-validated with zod. It never becomes SQL.
 - **No `dangerouslySetInnerHTML`.**

@@ -2,7 +2,7 @@
 // the same zod shapes the server sends, and every failure becomes an ApiError with the server's
 // code and message, so the UI can tell a 402 from a 503 without guessing.
 import { z, type ZodType } from 'zod';
-import { Broader, Me, Person, Plan, SavedBrief, SearchPage, SearchResponse, Shortlist } from '@/lib/shared/api';
+import { Broader, Me, Person, Plan, SavedBrief, SearchPage, SearchResponse, Shortlist, StripeRedirect } from '@/lib/shared/api';
 import type { Filters } from '@/lib/shared/filters';
 import { accessToken } from './supabase';
 
@@ -51,6 +51,8 @@ const id = (v: string) => encodeURIComponent(v);
 export const api = {
   me: () => request('GET', '/api/me', Me),
   plan: () => request('GET', '/api/plan', Plan),
+  checkout: () => request('POST', '/api/billing/checkout', StripeRedirect),
+  billingPortal: () => request('POST', '/api/billing/portal', StripeRedirect),
 
   search: (brief: string) => request('POST', '/api/search', SearchResponse, { brief }),
   refine: (brief: string, filters: Filters | Record<string, unknown>, source: 'edit' | 'saved') =>

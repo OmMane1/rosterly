@@ -189,13 +189,14 @@ function compare(area: string, label: string, before: Snapshot, after: Snapshot)
 type Secret = { name: string; value: string };
 
 // The names of our server-only variables; none may reach the browser (CLAUDE.md § Security rules).
-const SECRET_NAMES = ['SUPABASE_SECRET_KEY', 'ANTHROPIC_API_KEY', 'STRIPE_WEBHOOK_SECRET', 'DATABASE_URL'];
+const SECRET_NAMES = ['SUPABASE_SECRET_KEY', 'ANTHROPIC_API_KEY', 'STRIPE_WEBHOOK_SECRET', 'STRIPE_SECRET_KEY', 'DATABASE_URL'];
 // supabase-js itself contains the bare literal "sb_secret_" (its key-type check), so a prefix
 // counts only when key characters follow it.
 const PATTERNS: [string, RegExp][] = [
   ['sb_secret_ followed by key characters', /sb_secret_[A-Za-z0-9_-]{8,}/],
   ['sk-ant- followed by key characters', /sk-ant-[A-Za-z0-9_-]{8,}/],
   ['whsec_ followed by key characters', /whsec_[A-Za-z0-9_+/=-]{8,}/],
+  ['a Stripe secret or restricted key', /\b[sr]k_(?:test|live)_[A-Za-z0-9]{8,}/],
 ];
 const JWT = /eyJ[A-Za-z0-9_-]{8,}\.(eyJ[A-Za-z0-9_-]{8,})\.[A-Za-z0-9_-]+/g;
 

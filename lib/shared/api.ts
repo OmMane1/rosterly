@@ -107,6 +107,10 @@ export type SearchResponse = z.infer<typeof SearchResponse>;
 export const Broader = z.object({ options: z.array(z.object({ key: z.string(), total: z.number() })) });
 export type Broader = z.infer<typeof Broader>;
 
+/** POST /api/billing/checkout and /api/billing/portal: the Stripe page to send the browser to. */
+export const StripeRedirect = z.object({ url: z.url() });
+export type StripeRedirect = z.infer<typeof StripeRedirect>;
+
 export const Plan = z.object({ plan: z.enum(['free', 'paid']), searches_remaining: z.number().nullable() });
 export type Plan = z.infer<typeof Plan>;
 
