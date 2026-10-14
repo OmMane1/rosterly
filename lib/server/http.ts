@@ -16,6 +16,7 @@ export class ApiError extends Error {
     message: string,
     /** Extra top-level fields next to `error` (the 402 body). */
     readonly extra?: Record<string, unknown>,
+    readonly headers?: Record<string, string>,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -40,14 +41,16 @@ const POSTGRES: Record<string, () => ApiError> = {
       plan: 'free',
       searches_remaining: 0,
     }),
+  // reserve_search's per-recruiter pace; the minute window is the one a burst runs into.
+  P0429: () => new ApiError(429, 'rate_limited', 'Too many searches at once. Wait a minute and try again; this did not use a search.', undefined, { 'Retry-After': '60' }),
   // PostgREST rejecting the token (e.g. it expired after we verified it).
   PGRST301: unauthorized,
   PGRST302: unauthorized,
   PGRST303: unauthorized,
 };
 
-export function json(body: unknown, status = 200): Response {
-  return Response.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
+export function json(body: unknown, status = 200, headers?: Record<string, string>): Response {
+  return Response.json(body, { status, headers: { ...headers, 'Cache-Control': 'no-store' } });
 }
 
 export function toApiError(err: unknown): ApiError {
@@ -64,7 +67,7 @@ export function toApiError(err: unknown): ApiError {
 
 export function errorResponse(err: unknown): Response {
   const e = toApiError(err);
-  return json({ error: { code: e.code, message: e.message }, ...e.extra }, e.status);
+  return json({ error: { code: e.code, message: e.message }, ...e.extra }, e.status, e.headers);
 }
 
 /** Wraps a route handler so anything it throws becomes the right error response. */

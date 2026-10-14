@@ -103,6 +103,7 @@ public/                  generated avatar and logo SVGs, served by the app
   - `42501` → 404
   - `23514` → 400
   - `P0402` → 402
+  - `P0429` → 429 (with `Retry-After`)
 
   An unhandled 500 always means a bug.
 - **Env:** read lazily, *inside* handlers and functions, via `lib/server/env.ts`. Never read it at module top level. `next build` must succeed with no model key and no webhook secret set.

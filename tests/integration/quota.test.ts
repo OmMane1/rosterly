@@ -224,3 +224,61 @@ describe('callers that are not recruiters', () => {
     for (const [name, call] of Object.entries(calls)) expect((await call).error?.code, name).toBe('42501');
   });
 });
+
+describe('per-recruiter pace: 20 searches a minute, 100 an hour', () => {
+  let pace: Tenant; // paid, so only the pace limits it
+  let colleague: Awaited<ReturnType<typeof createUser>>; // a second recruiter at the same company
+
+  const used = async (companyId: string) =>
+    (await db().query<{ n: number }>('select searches_used as n from public.company_usage where company_id = $1', [companyId])).rows[0]?.n;
+  // Done searches by `userId`, `minutesAgo` old: they count towards the pace but are never handed back.
+  const pastSearches = (userId: string, n: number, minutesAgo: number) =>
+    db().query(
+      `insert into public.searches (company_id, recruiter_id, brief, source, status, filters, total, created_at, completed_at)
+       select $1, $2, 'pace history', 'edit', 'done', '{}', 0, now() - make_interval(mins => $4), now() from generate_series(1, $3)`,
+      [pace.companyId, userId, n, minutesAgo],
+    );
+
+  beforeAll(async () => {
+    pace = await createTenant('pace');
+    await setSubscription(pace.companyId, 'active');
+    colleague = await createUser('pace-colleague');
+    await db().query('insert into public.recruiters (user_id, company_id) values ($1, $2)', [colleague.userId, pace.companyId]);
+  }, 60_000);
+
+  afterAll(async () => {
+    await pace?.dispose(); // the company's searches and recruiter rows go with it
+    await colleague?.dispose();
+  });
+
+  it('25 concurrent reservations: exactly 20 go through, and the other 5 get P0429 and use nothing', async () => {
+    const results = await Promise.all(Array.from({ length: 25 }, (_, i) => reserve(pace, `pace ${i}`, 'edit')));
+    expect(results.filter((r) => r.error === null)).toHaveLength(20);
+    expect(results.filter((r) => r.error?.code === 'P0429')).toHaveLength(5);
+    expect(await used(pace.companyId)).toBe(20);
+    expect(await searchesOf(pace.companyId)).toHaveLength(20);
+  });
+
+  it('a colleague at the same company keeps their own allowance', async () => {
+    expect((await reserve(colleague)).error).toBeNull();
+    expect((await reserve(pace)).error?.code).toBe('P0429');
+  });
+
+  it('the minute window passes; 100 in the last hour still refuse, and 61 minutes ago no longer counts', async () => {
+    await db().query("update public.searches set status = 'done', filters = '{}', total = 0, completed_at = now(), created_at = now() - interval '5 minutes' where company_id = $1", [pace.companyId]);
+    const before = await used(pace.companyId);
+    expect((await reserve(pace)).error).toBeNull(); // 21 in the hour, none in the last minute
+
+    await pastSearches(pace.userId, 79, 10); // 100 in the hour
+    expect((await reserve(pace)).error?.code).toBe('P0429');
+
+    await db().query("update public.searches set created_at = now() - interval '61 minutes' where recruiter_id = $1 and brief = 'pace history'", [pace.userId]);
+    expect((await reserve(pace)).error).toBeNull();
+    expect(await used(pace.companyId)).toBe((before ?? 0) + 2);
+  });
+
+  it('on the free plan the 402 comes first', async () => {
+    await setSubscription(pace.companyId, 'canceled');
+    expect((await reserve(pace)).error?.code).toBe('P0402');
+  });
+});

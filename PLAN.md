@@ -235,6 +235,7 @@ Rows added in M6 (approved by Om, 2026-10-08): the bare "N years" reading, the s
 - `get_plan()` returns `{plan, searches_remaining}`: paid ⇔ an active or trialing subscription; free remaining = max(0, 1 − searches_used).
 - Every new result set counts (brief, chip edit, saved re-run); paging never counts.
 - A zero-result search (unsupported or vague) also counts. This matters: if it didn't, a burst of vague briefs could all succeed.
+- **Pace (every plan):** `reserve_search` also refuses a recruiter's 21st search within a minute or 101st within an hour (`P0429` → 429), counted after the usage row lock, so a burst gets exactly 20. On Free the 402 comes first.
 - **Concurrency test:**
   - M5: 50 concurrent `reserve_search` calls with one token → exactly one success.
   - M7: 20 concurrent `POST /api/search` → exactly one 200 and nineteen 402s.
@@ -268,8 +269,8 @@ A **card** is `{id, full_name, avatar_url, headline, current_title, current_comp
 
 | Route | Request | Success | Other statuses |
 |---|---|---|---|
-| `POST /api/search` | `{brief}` | 200 `{search_id, filters, total, results: card[≤20], searches_remaining}` | 400 bad brief · 402 `{error, plan:"free", searches_remaining:0}` · 503 model unavailable |
-| `POST /api/search/refine` | `{brief, filters, source:"edit"\|"saved"}` | same as above | 400 invalid filters · 402 |
+| `POST /api/search` | `{brief}` | 200 `{search_id, filters, total, results: card[≤20], searches_remaining}` | 400 bad brief · 402 `{error, plan:"free", searches_remaining:0}` · 429 over 20 searches a minute or 100 an hour for this recruiter (`Retry-After: 60`) · 503 model unavailable |
+| `POST /api/search/refine` | `{brief, filters, source:"edit"\|"saved"}` | same as above | 400 invalid filters · 402 · 429 |
 | `GET /api/search/{search_id}?page=N` | `page` defaults to 1 | 200 `{search_id, brief, filters, page, per_page:20, total, results: card[]}`; never counts | 400 bad page · 404 unknown or other company |
 | `GET /api/people/{id}` | none | 200 full candidate (candidates.json shape) | 404 |
 | `GET /api/shortlists` | none | 200 `[{id, name, created_at, updated_at, people_count, people: card[]}]` | none |

@@ -317,6 +317,31 @@ describe('POST /api/search/refine: the same quota, the recruiter’s own filters
   });
 });
 
+describe('POST /api/search/refine: one recruiter starts at most 20 searches a minute', () => {
+  let pace: Tenant; // paid, so only the pace limits it
+
+  beforeAll(async () => {
+    pace = await createTenant('e2e-pace');
+    await setSubscription(pace.companyId, 'active');
+  });
+
+  afterAll(async () => {
+    await pace?.dispose();
+  });
+
+  it('21 concurrent refines on a paid company → twenty 200s and one 429 that says when to retry', async () => {
+    const R = as(pace.accessToken);
+    const all = await Promise.all(Array.from({ length: 21 }, () => R.post('/api/search/refine', { brief: 'iOS developers', filters: SWIFT, source: 'edit' })));
+    const ok = all.filter((r) => r.status === 200);
+    const limited = all.filter((r) => r.status === 429);
+    expect([ok.length, limited.length], JSON.stringify(all.map((r) => r.status))).toEqual([20, 1]);
+    const [refused] = limited;
+    expectError(refused as Res, 429, 'rate_limited');
+    expect(refused?.headers.get('retry-after')).toBe('60');
+    expect(await searchesUsed(pace.companyId)).toBe(20);
+  });
+});
+
 describe('POST /api/search: 20 concurrent requests on a fresh free company', () => {
   it.skipIf(!HAS_MODEL_KEY)(`exactly one 200 and nineteen 402s, and the 402s don't wait for the model${MODEL}`, async () => {
     const all = await Promise.all(Array.from({ length: 20 }, () => B.post('/api/search', { brief: 'devops engineers who know Terraform' })));

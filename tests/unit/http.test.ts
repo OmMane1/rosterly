@@ -35,6 +35,7 @@ describe('Postgres error mapping', () => {
     ['42501', 404, 'not_found'],
     ['23514', 400, 'invalid_request'],
     ['P0402', 402, 'search_limit_reached'],
+    ['P0429', 429, 'rate_limited'],
     ['PGRST301', 401, 'unauthorized'],
   ])('%s → %i %s', (code, status, apiCode) => {
     const e = toApiError(new DbError(code, 'detail from the database'));
@@ -49,6 +50,14 @@ describe('Postgres error mapping', () => {
       plan: 'free',
       searches_remaining: 0,
     });
+  });
+
+  it('429 says when to retry and keeps responses uncached', async () => {
+    const res = errorResponse(new DbError('P0429', 'too many searches'));
+    expect(res.status).toBe(429);
+    expect(res.headers.get('retry-after')).toBe('60');
+    expect(res.headers.get('cache-control')).toBe('no-store');
+    expect(await res.json()).toEqual({ error: { code: 'rate_limited', message: expect.any(String) } });
   });
 
   it('an unknown code or a plain error is a 500 that hides the detail', async () => {

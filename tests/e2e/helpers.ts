@@ -8,7 +8,7 @@ export const BASE_URL = (process.env.E2E_BASE_URL ?? 'http://localhost:3000').re
 /** The app calls the model with its own environment; this mirrors it for skipping (CLAUDE.md). */
 export const HAS_MODEL_KEY = Boolean(process.env.ANTHROPIC_API_KEY?.trim());
 
-export type Res = { status: number; body: unknown; ms: number };
+export type Res = { status: number; body: unknown; ms: number; headers: Headers };
 
 type Options = { token?: string; json?: unknown; raw?: string; headers?: Record<string, string> };
 
@@ -30,7 +30,7 @@ export async function call(method: string, path: string, opts: Options = {}): Pr
   } catch {
     // not JSON: keep the text so a failing assertion shows it
   }
-  return { status: res.status, body: parsed, ms };
+  return { status: res.status, body: parsed, ms, headers: res.headers };
 }
 
 /** Calls as one recruiter. */

@@ -230,9 +230,17 @@ async function main(): Promise<void> {
     }
     const all = { search: [] as number[], paging: [] as number[] };
     for (let run = 1; run <= RUNS; run += 1) {
-      const r = await pass(tenant, run);
-      all.search.push(...r.search);
-      all.paging.push(...r.paging);
+      // A run is 20 searches, the most one recruiter may start in a minute (reserve_search), so
+      // every later run signs in as a fresh paid recruiter.
+      const t = run === 1 ? tenant : await createTenant('bench');
+      try {
+        if (t !== tenant) await setSubscription(t.companyId, 'active');
+        const r = await pass(t, run);
+        all.search.push(...r.search);
+        all.paging.push(...r.paging);
+      } finally {
+        if (t !== tenant) await t.dispose();
+      }
     }
     if (RUNS > 1) {
       console.log(`all ${RUNS} runs:`);
