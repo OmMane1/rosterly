@@ -131,7 +131,7 @@ public/                  generated avatar and logo SVGs, served by the app
 
   Read-only functions are `SECURITY INVOKER` and rely on RLS.
 - **The function EXECUTE allowlist is fixed and tested:**
-  - `authenticated`: `reserve_search`, `complete_search`, `release_search`, `get_search_page`, `get_plan`.
+  - `authenticated`: `reserve_search`, `complete_search`, `release_search`, `get_search_page`, `get_plan`, `count_relaxations`. Because `count_relaxations` is INVOKER, `authenticated` also executes `private.match_candidates` and the pure helpers it calls (`private` is not an RPC schema).
   - `service_role`: `apply_stripe_event`.
   - `anon`: nothing.
 

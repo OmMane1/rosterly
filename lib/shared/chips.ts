@@ -1,7 +1,7 @@
 // The understood filters as chips (PLAN.md § 3.9): what each chip says, which editor it opens, and
 // the pure edits behind × and the editors. Shared by the search page, saved searches and the tests,
 // so a chip always describes exactly what the SQL will match.
-import { normalizeFilters, type ExperienceCondition, type Exclusions, type Filters, type Unsupported } from './filters';
+import { hasSubstantiveFilter, isUnanswerable, normalizeFilters, type ExperienceCondition, type Exclusions, type Filters, type Unsupported } from './filters';
 import { ROLES, type Seniority, type State } from './vocabulary.generated';
 
 export const SENIORITY_LABELS: Record<Seniority, string> = { junior: 'Junior', mid: 'Mid-level', senior: 'Senior', staff: 'Staff' };
@@ -196,6 +196,27 @@ export function applySuggestion(f: Filters, index: number): Filters {
 /** Drops every warning: "search the rest of the brief". */
 export function withoutUnsupported(f: Filters): Filters {
   return normalizeFilters({ ...f, unsupported: undefined });
+}
+
+/** The relaxation that drops every warning at once. */
+export const WITHOUT_UNSUPPORTED = 'unsupported';
+
+/**
+ * Each way to widen a search by one step: drop one chip, or, while the brief has warnings, drop
+ * all of them (with a warning left, no other edit can find anyone). A variant with nothing left to
+ * search on is skipped, because it can only find no one.
+ */
+export function relaxations(f: Filters): { key: string; filters: Filters }[] {
+  const options = isUnanswerable(f)
+    ? [{ key: WITHOUT_UNSUPPORTED, filters: withoutUnsupported(f) }]
+    : filterChips(f).map((c) => ({ key: c.key, filters: removeChip(f, c.key) }));
+  const seen = new Set<string>();
+  return options.filter((o) => {
+    const k = filtersKey(o.filters);
+    if (!hasSubstantiveFilter(o.filters) || seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
 }
 
 /** How many chips a draft adds, removes or changes compared with the search it edits. */

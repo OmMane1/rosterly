@@ -48,6 +48,7 @@ const PageBody = z.strictObject({
   total: z.int().min(0),
   results: z.array(Card).max(20),
 });
+const BroaderBody = z.strictObject({ options: z.array(z.strictObject({ key: z.string().min(1), total: z.int().min(0) })) });
 const PlanBody = z.strictObject({ plan: z.enum(['free', 'paid']), searches_remaining: z.int().min(0).nullable() });
 const MeBody = z.strictObject({ email: z.string().nullable(), company: z.strictObject({ slug: z.string(), name: z.string() }) });
 const ErrorBody = z.strictObject({ error: z.strictObject({ code: z.string().min(1), message: z.string().min(1) }) });
@@ -126,6 +127,7 @@ const ROUTES: [string, string, unknown?][] = [
   ['POST', '/api/search', { brief: 'backend engineers' }],
   ['POST', '/api/search/refine', { brief: 'x', filters: SWIFT, source: 'edit' }],
   ['GET', `/api/search/${NIL}?page=1`],
+  ['GET', `/api/search/${NIL}/broader`],
   ['GET', '/api/people/cand_0001'],
   ['GET', '/api/shortlists'],
   ['POST', '/api/shortlists', { name: 'x' }],
@@ -375,6 +377,51 @@ describe('with no searches left, a bad request is still a 400 before the 402', (
     expect(res.ms).toBeLessThan(1000);
     expectBody(await F.post('/api/search/refine', { brief: 'x', filters: SWIFT, source: 'saved' }), 402, LimitBody);
     expect(await searchesUsed(free.companyId)).toBe(1);
+  });
+});
+
+// ---- widening a search that found no one ----
+
+describe('GET /api/search/{id}/broader', () => {
+  const NOWHERE = { roles: ['Recruiter'], cities: ['Denver'], skills_all: ['CUDA'] };
+  const WARNED = { roles: ['Recruiter'], cities: ['Denver'], unsupported: [{ text: 'in London', reason: 'Rosterly has no one in London.' }] };
+  const refined = async (brief: string, filters: unknown) => expectBody(await P.post('/api/search/refine', { brief, filters, source: 'edit' }), 200, SearchBody);
+  let empty = '';
+
+  it('for a search that found no one: each one-filter step and how many it finds, most first; never counts', async () => {
+    const created = await refined('recruiters in Denver who know CUDA', NOWHERE);
+    expect(created.total).toBe(0);
+    empty = created.search_id;
+    const used = await searchesUsed(paid.companyId);
+    const steps: [string, unknown][] = [
+      ['roles:Recruiter', { cities: ['Denver'], skills_all: ['CUDA'] }],
+      ['cities:Denver', { roles: ['Recruiter'], skills_all: ['CUDA'] }],
+      ['skills_all:CUDA', { roles: ['Recruiter'], cities: ['Denver'] }],
+    ];
+    const expected = await Promise.all(steps.map(async ([key, f]) => ({ key, total: (await matchOrder(f)).length })));
+    expected.sort((a, b) => b.total - a.total);
+    expect(expected[0]?.total).toBeGreaterThan(0);
+    expect(expectBody(await P.get(`/api/search/${empty}/broader`), 200, BroaderBody)).toEqual({ options: expected });
+    expect(await searchesUsed(paid.companyId)).toBe(used);
+  });
+
+  it('with a warning, the one step is dropping the warnings', async () => {
+    const created = await refined('recruiters in Denver or London', WARNED);
+    expect(created.total).toBe(0);
+    const total = (await matchOrder({ roles: ['Recruiter'], cities: ['Denver'] })).length;
+    expect(expectBody(await P.get(`/api/search/${created.search_id}/broader`), 200, BroaderBody)).toEqual({ options: [{ key: 'unsupported', total }] });
+  });
+
+  it('a search that found people offers nothing', async () => {
+    const created = await refined('iOS developers', SWIFT);
+    expect(created.total).toBeGreaterThan(0);
+    expect(expectBody(await P.get(`/api/search/${created.search_id}/broader`), 200, BroaderBody)).toEqual({ options: [] });
+  });
+
+  it('an unknown id, a malformed id, or another company’s search → 404', async () => {
+    expectError(await P.get(`/api/search/${NIL}/broader`), 404, 'not_found');
+    expectError(await P.get('/api/search/not-a-uuid/broader'), 404, 'not_found');
+    expectError(await O.get(`/api/search/${empty}/broader`), 404, 'not_found');
   });
 });
 

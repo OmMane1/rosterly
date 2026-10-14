@@ -6,10 +6,12 @@ import {
   filterChips,
   filtersKey,
   joinOr,
+  relaxations,
   removeChip,
   removedChips,
   removeUnsupported,
   requestedSkills,
+  WITHOUT_UNSUPPORTED,
   withoutUnsupported,
 } from '@/lib/shared/chips';
 import { Filters, normalizeFilters } from '@/lib/shared/filters';
@@ -172,5 +174,36 @@ describe('filtersKey', () => {
     expect(filtersKey({ roles: ['A'], years_min: 3 })).toBe(filtersKey({ years_min: 3, roles: ['A'] }));
     expect(filtersKey({ exclude: { b: 1, a: [2, 3] } })).toBe(filtersKey({ exclude: { a: [2, 3], b: 1 } }));
     expect(filtersKey({ roles: ['A', 'B'] })).not.toBe(filtersKey({ roles: ['B', 'A'] }));
+  });
+});
+
+describe('relaxations', () => {
+  it('drops one chip at a time, in chip order', () => {
+    const r = relaxations(SENIOR_REACT);
+    expect(r.map((o) => o.key)).toEqual(filterChips(SENIOR_REACT).map((c) => c.key));
+    for (const o of r) expect(o.filters).toEqual(removeChip(SENIOR_REACT, o.key));
+  });
+
+  it('every variant is the search with parts removed (what count_relaxations checks with @>)', () => {
+    const contains = (outer: unknown, inner: unknown): boolean => {
+      if (Array.isArray(inner)) return Array.isArray(outer) && inner.every((x) => outer.some((y) => contains(y, x)));
+      if (inner !== null && typeof inner === 'object') {
+        return outer !== null && typeof outer === 'object' && !Array.isArray(outer) && Object.entries(inner).every(([k, v]) => contains((outer as Record<string, unknown>)[k], v));
+      }
+      return outer === inner;
+    };
+    const wide = f({ roles: ['Backend Engineer', 'Frontend Engineer'], skills_any: ['Go', 'Rust'], years_min: 3, open_to_work: true, exclude: { cities: ['Austin'] }, ignored: ['great'] });
+    for (const o of relaxations(wide)) expect(contains(wide, o.filters), o.key).toBe(true);
+  });
+
+  it('with warnings, the only step is dropping all of them', () => {
+    const warned = f({ roles: ['Backend Engineer'], cities: ['Denver'], unsupported: [{ text: 'in London', reason: 'Rosterly has no one in London' }] });
+    expect(relaxations(warned)).toEqual([{ key: WITHOUT_UNSUPPORTED, filters: withoutUnsupported(warned) }]);
+  });
+
+  it('skips a step that would leave nothing to search on', () => {
+    expect(relaxations(f({ cities: ['Denver'] }))).toEqual([]);
+    expect(relaxations(f({ cities: ['Denver'], exclude: { skills: ['Java'] } })).map((o) => o.key)).toEqual(['exclude.skills:Java']);
+    expect(relaxations(f({ unsupported: [{ text: 'in London', reason: 'x' }] }))).toEqual([]);
   });
 });

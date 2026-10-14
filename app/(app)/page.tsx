@@ -26,7 +26,7 @@ import { useNewSearch, useRefine } from '@/lib/client/hooks/mutations';
 import { keys, usePlan, useSearchPage } from '@/lib/client/hooks/queries';
 import { rememberScroll, takeScroll } from '@/lib/client/navigation';
 import { PER_PAGE } from '@/lib/shared/api';
-import { countChanges, withoutUnsupported } from '@/lib/shared/chips';
+import { countChanges } from '@/lib/shared/chips';
 import { hasSubstantiveFilter, type Filters } from '@/lib/shared/filters';
 
 export default function SearchRoute() {
@@ -204,9 +204,10 @@ function SearchScreen() {
             }}
             empty={
               <NoResults
+                searchId={result.data.search_id}
                 filters={result.data.filters}
                 pending={refine.isPending}
-                onSearchWithout={() => void applyFilters(withoutUnsupported(result.data.filters))}
+                onApply={(f) => void applyFilters(f)}
                 onEditBrief={() => inputRef.current?.focus()}
               />
             }

@@ -24,7 +24,7 @@ Tests: `npm test` and `npm run test:integration`. With `make dev` running: `npm 
 4. Static SQL finds the exact set and ranks it by skills matched, skills used in the current job, open to work, years, then id. The ranks are stored.
 5. Paging reads the stored ranks: free, stable, complete, p95 35 ms.
 
-Every filter shows as a chip, and editing one re-runs the SQL without the model.
+Every filter shows as a chip, and editing one re-runs the SQL without the model. When nothing matches, Rosterly counts what dropping each filter would find and offers the best few.
 
 ## Stopping the model inventing filters
 
@@ -55,7 +55,6 @@ Per search (mean of 44 calls): 8,968 cached prompt tokens read ($0.000090), 46 u
 
 ## What's next
 
-- When a search returns 0, offer the nearest broader search (drop one filter) with live counts.
 - Per-recruiter rate limiting and an audit log.
 - CI on a `macos-14` arm64 runner.
 - Random filter sets checked against the TypeScript oracle, and a synthetic eval with many phrasings per brief.

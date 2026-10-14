@@ -272,6 +272,7 @@ A **card** is `{id, full_name, avatar_url, headline, current_title, current_comp
 | `POST /api/search` | `{brief}` | 200 `{search_id, filters, total, results: card[≤20], searches_remaining}` | 400 bad brief · 402 `{error, plan:"free", searches_remaining:0}` · 429 over 20 searches a minute or 100 an hour for this recruiter (`Retry-After: 60`) · 503 model unavailable |
 | `POST /api/search/refine` | `{brief, filters, source:"edit"\|"saved"}` | same as above | 400 invalid filters · 402 · 429 |
 | `GET /api/search/{search_id}?page=N` | `page` defaults to 1 | 200 `{search_id, brief, filters, page, per_page:20, total, results: card[]}`; never counts | 400 bad page · 404 unknown or other company |
+| `GET /api/search/{search_id}/broader` | none | 200 `{options: [{key, total}]}`: for a search that found no one, each one-step relaxation (a chip key, or `unsupported` for all warnings) and how many it finds, most first; `[]` for a search with results; never counts | 404 unknown or other company |
 | `GET /api/people/{id}` | none | 200 full candidate (candidates.json shape) | 404 |
 | `GET /api/shortlists` | none | 200 `[{id, name, created_at, updated_at, people_count, people: card[]}]` | none |
 | `POST /api/shortlists` | `{name}` | 200 `{id}` | 400 |

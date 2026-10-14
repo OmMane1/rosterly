@@ -100,6 +100,13 @@ export const SearchResponse = SearchPage.pick({ search_id: true, filters: true, 
 });
 export type SearchResponse = z.infer<typeof SearchResponse>;
 
+/**
+ * GET /api/search/{id}/broader: for a search that found no one, how many people each one-step
+ * relaxation (a chip key, or "unsupported" for all warnings) would find, most first.
+ */
+export const Broader = z.object({ options: z.array(z.object({ key: z.string(), total: z.number() })) });
+export type Broader = z.infer<typeof Broader>;
+
 export const Plan = z.object({ plan: z.enum(['free', 'paid']), searches_remaining: z.number().nullable() });
 export type Plan = z.infer<typeof Plan>;
 

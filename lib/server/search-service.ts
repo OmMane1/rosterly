@@ -3,11 +3,13 @@ import 'server-only';
 // reserve → (model) → complete, and the reservation is released if anything fails before it
 // completes, so only a finished search uses up the free one. Paging reads frozen ranks and never
 // touches the quota.
-import { SearchPage, SearchResponse, type SearchPage as Page } from '@/lib/shared/api';
+import { z } from 'zod';
+import { Broader, SearchPage, SearchResponse, type SearchPage as Page } from '@/lib/shared/api';
+import { relaxations } from '@/lib/shared/chips';
 import { Filters, normalizeFilters } from '@/lib/shared/filters';
 import { sanitizeDeep } from '@/lib/shared/sanitize';
 import type { Recruiter } from './auth';
-import { ApiError, parseInput } from './http';
+import { ApiError, notFound, parseInput } from './http';
 import { LlmConfigError, LlmUnavailableError } from './search/parse-brief';
 import { interpretBrief } from './search/pipeline';
 import { check } from './supabase';
@@ -73,4 +75,28 @@ export async function refineSearch(r: Recruiter, input: { brief: string; filters
 /** GET /api/search/{id}?page=N: 404 for an unknown search or another company's. */
 export async function searchPage(r: Recruiter, id: string, page: number): Promise<Page> {
   return SearchPage.parse(check(await r.db.rpc('get_search_page', { p_search_id: id, p_page: page })));
+}
+
+/** count_relaxations counts at most this many variants in one call. */
+const MAX_RELAXATIONS = 25;
+
+/**
+ * GET /api/search/{id}/broader: how many people each one-step relaxation of a search that found no
+ * one would find. Reading the counts never uses a search; acting on one is a refine, which does.
+ */
+export async function broaderOptions(r: Recruiter, id: string): Promise<Broader> {
+  const row = check(await r.db.from('searches').select('filters, total').eq('id', id).eq('status', 'done').maybeSingle<{ filters: unknown; total: number }>());
+  if (!row) throw notFound('Search not found.');
+  if (row.total > 0) return { options: [] };
+  // Stored filters were valid when the search ran; one from before a vocabulary change gets no offer.
+  const stored = Filters.safeParse(row.filters);
+  if (!stored.success) return { options: [] };
+  const variants = relaxations(stored.data).slice(0, MAX_RELAXATIONS);
+  if (variants.length === 0) return { options: [] };
+  const counts = z
+    .array(z.number())
+    .length(variants.length)
+    .parse(check(await r.db.rpc('count_relaxations', { p_search_id: id, p_variants: variants.map((v) => v.filters) })));
+  // A stable sort: equal counts keep the chips' order.
+  return { options: variants.map((v, i) => ({ key: v.key, total: counts[i] ?? 0 })).sort((a, b) => b.total - a.total) };
 }

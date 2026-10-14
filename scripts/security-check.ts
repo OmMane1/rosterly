@@ -328,6 +328,7 @@ async function apiAttacks(c: Ctx): Promise<void> {
     ['GET /api/search/{glenfold done search}?page=1', () => api(A, 'GET', `/api/search/${c.gDone}?page=1`)],
     ['GET /api/search/{glenfold done search}?page=2', () => api(A, 'GET', `/api/search/${c.gDone}?page=2`)],
     ['GET /api/search/{glenfold pending search}', () => api(A, 'GET', `/api/search/${c.gPending}`)],
+    ['GET /api/search/{glenfold done search}/broader', () => api(A, 'GET', `/api/search/${c.gDone}/broader`)],
   ];
   for (const [attempt, run] of attempts) {
     const r = await run();
@@ -453,6 +454,7 @@ async function postgrestAttacks(c: Ctx): Promise<void> {
     ['complete_search on glenfold’s done search', () => rpc('complete_search', { p_search_id: c.gDone, p_filters: filters })],
     ['release_search on glenfold’s pending search', () => rpc('release_search', { p_search_id: c.gPending })],
     ['get_search_page on glenfold’s done search', () => rpc('get_search_page', { p_search_id: c.gDone, p_page: 1 })],
+    ['count_relaxations on glenfold’s done search', () => rpc('count_relaxations', { p_search_id: c.gDone, p_variants: [filters] })],
     ['get_plan with glenfold’s company id as a parameter', () => rpc('get_plan', { p_company_id: c.G })],
     ['apply_stripe_event: cancel glenfold', () => rpc('apply_stripe_event', { p_event_id: 'evt_m10_attack', p_type: 'customer.subscription.deleted', p_created: 9_999_999_999, p_subscription_id: 'sub_m10_attack', p_status: 'canceled', p_company: 'glenfold', p_customer: null, p_current_period_end: null })],
     ['apply_stripe_event: upgrade asterwell', () => rpc('apply_stripe_event', { p_event_id: 'evt_m10_self', p_type: 'customer.subscription.created', p_created: 9_999_999_999, p_subscription_id: 'sub_m10_self', p_status: 'active', p_company: 'asterwell', p_customer: null, p_current_period_end: null })],
@@ -505,6 +507,7 @@ async function anonAttacks(c: Ctx): Promise<void> {
     ['complete_search', { p_search_id: c.gPending, p_filters: { roles: ['Recruiter'] } }],
     ['release_search', { p_search_id: c.gPending }],
     ['get_search_page', { p_search_id: c.gDone, p_page: 1 }],
+    ['count_relaxations', { p_search_id: c.gDone, p_variants: [] }],
     ['get_plan', {}],
     ['apply_stripe_event', { p_event_id: 'evt_m10_anon', p_type: 'customer.subscription.created', p_created: 9_999_999_999, p_subscription_id: 'sub_m10_anon', p_status: 'active', p_company: 'glenfold', p_customer: null, p_current_period_end: null }],
   ];

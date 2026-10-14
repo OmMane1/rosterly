@@ -7,9 +7,10 @@ import { ShortlistButton } from '@/components/shortlists/shortlist-picker';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/components/ui/cn';
 import { EmptyState } from '@/components/ui/empty-state';
-import { usePlan } from '@/lib/client/hooks/queries';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useBroader, usePlan } from '@/lib/client/hooks/queries';
 import { MAX_PAGE, type SearchPage } from '@/lib/shared/api';
-import { requestedSkills, withoutUnsupported } from '@/lib/shared/chips';
+import { filterChips, removeChip, requestedSkills, WITHOUT_UNSUPPORTED, withoutUnsupported } from '@/lib/shared/chips';
 import { hasSubstantiveFilter, type Filters } from '@/lib/shared/filters';
 import { CostNote } from './brief-form';
 
@@ -113,7 +114,7 @@ function PageLink({ href, disabled, dir }: { href: string; disabled: boolean; di
 }
 
 /** Why there's no one, and the next step (PLAN.md § 3.9: unsupported, vague, nothing matches). */
-export function NoResults({ filters, onSearchWithout, onEditBrief, pending }: { filters: Filters; onSearchWithout: () => void; onEditBrief: () => void; pending: boolean }) {
+export function NoResults({ searchId, filters, onApply, onEditBrief, pending }: { searchId: string; filters: Filters; onApply: (f: Filters) => void; onEditBrief: () => void; pending: boolean }) {
   const unsupported = filters.unsupported ?? [];
   if (unsupported.length > 0) {
     const rest = withoutUnsupported(filters);
@@ -126,9 +127,10 @@ export function NoResults({ filters, onSearchWithout, onEditBrief, pending }: { 
         actions={
           canSearchRest ? (
             <div className="flex flex-col items-center gap-1.5">
-              <Button onClick={onSearchWithout} disabled={pending}>
+              <Button onClick={() => onApply(rest)} disabled={pending}>
                 Search without {unsupported.length === 1 ? 'it' : 'them'}
               </Button>
+              <RestCount searchId={searchId} />
               <CostNote className="text-xs" />
             </div>
           ) : (
@@ -158,9 +160,62 @@ export function NoResults({ filters, onSearchWithout, onEditBrief, pending }: { 
       </EmptyState>
     );
   }
+  return <NoOneMatches searchId={searchId} filters={filters} onApply={onApply} pending={pending} />;
+}
+
+const people = (n: number) => `${n.toLocaleString('en-US')} ${n === 1 ? 'person' : 'people'}`;
+
+/** What "search without it" would find, once the count is in. */
+function RestCount({ searchId }: { searchId: string }) {
+  const broader = useBroader(searchId);
+  const total = broader.data?.options.find((o) => o.key === WITHOUT_UNSUPPORTED)?.total;
+  if (total === undefined) return null;
+  return <span className="text-xs text-stone-600">{total > 0 ? `Finds ${people(total)}` : 'That finds no one either'}</span>;
+}
+
+/** The three one-filter relaxations that find the most people, with how many each finds. */
+const SHOWN = 3;
+
+function NoOneMatches({ searchId, filters, onApply, pending }: { searchId: string; filters: Filters; onApply: (f: Filters) => void; pending: boolean }) {
+  const broader = useBroader(searchId);
+  const labels = new Map(filterChips(filters).map((c) => [c.key, c.label]));
+  const options = (broader.data?.options ?? []).filter((o) => o.total > 0 && labels.has(o.key)).slice(0, SHOWN);
+  // Counts that failed to load leave the plain advice; the suggestions are a shortcut, not the way.
+  const noneWiden = broader.isSuccess && options.length === 0;
+
   return (
-    <EmptyState icon={SearchX} title="No one matches all of these">
-      Every filter has to match. Remove or loosen one of the filters above to widen the search.
+    <EmptyState
+      icon={SearchX}
+      title="No one matches all of these"
+      actions={
+        broader.isPending ? (
+          <div className="flex w-full max-w-xs flex-col gap-2" aria-busy="true" aria-label="Looking for a broader search">
+            <Skeleton className="h-10 rounded-xl" />
+            <Skeleton className="h-10 rounded-xl" />
+          </div>
+        ) : options.length > 0 ? (
+          <div className="flex w-full flex-col items-center gap-2">
+            <p id="widen-heading" className="text-xs font-medium text-stone-500">
+              Drop one filter
+            </p>
+            <ul aria-labelledby="widen-heading" className="flex w-full flex-col items-stretch gap-2 sm:w-auto">
+              {options.map((o) => (
+                <li key={o.key}>
+                  <Button variant="secondary" className="w-full justify-between gap-3" disabled={pending} onClick={() => onApply(removeChip(filters, o.key))}>
+                    <span className="truncate">Drop “{labels.get(o.key)}”</span>
+                    <span className="shrink-0 font-normal text-stone-600 tabular-nums">{people(o.total)}</span>
+                  </Button>
+                </li>
+              ))}
+            </ul>
+            <CostNote className="text-xs" />
+          </div>
+        ) : undefined
+      }
+    >
+      {noneWiden
+        ? 'Every filter has to match, and dropping any one of them still finds no one. Remove two, or loosen one in its editor.'
+        : 'Every filter has to match. Remove or loosen one of the filters above to widen the search.'}
     </EmptyState>
   );
 }

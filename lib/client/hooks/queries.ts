@@ -15,6 +15,7 @@ export const keys = {
   shortlist: (id: string) => ['shortlists', id] as const,
   saved: ['saved-briefs'] as const,
   search: (id: string, page: number) => ['search', id, page] as const,
+  broader: (id: string) => ['search', id, 'broader'] as const,
   person: (id: string) => ['person', id] as const,
 };
 
@@ -38,6 +39,9 @@ export const useSearchPage = (id: string | null, page: number) =>
     staleTime: Infinity,
     gcTime: 60 * 60_000,
   });
+
+/** Counts for widening a search that found no one; a stored search never changes, so neither do they. */
+export const useBroader = (id: string) => useQuery({ queryKey: keys.broader(id), queryFn: () => api.broader(id), staleTime: Infinity, gcTime: 60 * 60_000 });
 
 export const usePerson = (id: string) => useQuery({ queryKey: keys.person(id), queryFn: () => api.person(id), staleTime: 5 * 60_000 });
 

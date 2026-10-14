@@ -78,6 +78,15 @@ describe('function privileges', () => {
         'authenticated: EXECUTE public.release_search(p_search_id uuid)',
         'authenticated: EXECUTE public.get_search_page(p_search_id uuid, p_page integer)',
         'authenticated: EXECUTE public.get_plan()',
+        // Counts for "drop one filter" (count_relaxations migration). It is INVOKER, so the caller
+        // also needs the matcher and the pure helpers it runs; `private` is still not an RPC schema.
+        'authenticated: EXECUTE public.count_relaxations(p_search_id uuid, p_variants jsonb)',
+        'authenticated: EXECUTE private.match_candidates(filters jsonb)',
+        'authenticated: EXECUTE private.filter_list(obj jsonb, key text)',
+        'authenticated: EXECUTE private.filter_int(obj jsonb, key text, lo integer, hi integer)',
+        'authenticated: EXECUTE private.filter_bool(obj jsonb, key text)',
+        'authenticated: EXECUTE private.filter_experience(obj jsonb)',
+        'authenticated: EXECUTE private.mentions(haystack text, needle text)',
         // The Stripe webhook (billing migration): the route calls it with the secret key.
         'service_role: EXECUTE public.apply_stripe_event(p_event_id text, p_type text, p_created bigint, p_subscription_id text, p_status text, p_company text, p_customer text, p_current_period_end bigint)',
       ].sort(),
