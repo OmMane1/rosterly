@@ -99,6 +99,15 @@ How `make setup` and `make dev` behave on a clean Mac, and the pinned tools behi
   - The model's caches were warm (the eval had run 20 minutes earlier). M12 measured the first search after a cold start with the warm-up at 1.9–2.2 s.
 - Alternatives: a different `project_id` in the clone (no volume juggling, but then the clone isn't what a new user runs); cloning the local repo (it would hide anything not pushed).
 
+### 2026-10-14: Hosted on Vercel, with Supabase Cloud as the database
+- Why: the app needs Supabase's auth, PostgREST and RLS, and Vercel runs no Docker, so the database moves to a Supabase Cloud project (`rosterly`, us-east-1, Postgres 17) and the app to a Vercel project of the same name. `vercel.json` pins functions to `iad1`, next to the database. No app code changed: the server reads the same `SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_SECRET_KEY` (set in Vercel for production), and the `/supabase/*` rewrite points at the hosted URL because `next.config.ts` reads `SUPABASE_URL` at build time.
+  - **The hosted project doesn't read `config.toml`,** so its settings are set separately to match it: sign-up off (a stranger with the public publishable key could otherwise mint an `authenticated` session and read every candidate), anonymous sign-ins off, and only `public` exposed (no `graphql_public`). `supabase config push` was not used, because it would also push the raised local rate limits and the `localhost` site URL.
+  - **Migrations** go through `supabase db push --linked`. **The seed** is the same `npm run seed`, with the production values exported over `.env.local` (the shell wins). The values live outside the repo, in `~/.config/rosterly/production.env` (mode 600). The seed connects through the session pooler with `sslmode=verify-full` against Supabase's root CA (`NODE_EXTRA_CA_CERTS`), because the pooler's certificate chain isn't publicly trusted.
+  - `supabase projects api-keys` masks the new `sb_secret_` key with `·` unless `--reveal` is passed. The masked value has the right length, and the API answers it with 401 `Invalid API key`.
+  - **The production webhook secret must not be `whsec_rosterly_sample`.** Signatures of any age are accepted, so with the public sample secret anyone could replay "paid" and run unlimited searches on the model key. The plan flips through `npm run replay:stripe -- --resign --base-url <url>` with the production secret, or a real Stripe endpoint.
+  - `.vercelignore` repeats `.gitignore`, because `vercel deploy` uploads the working tree, so what is left out mustn't depend on whether the CLI reads `.gitignore`. `.logs/` holds the Supabase CLI's output, keys included.
+- Alternatives: one server running self-hosted Supabase in Docker (about ten containers plus TLS, backups and upgrades to maintain); plain Postgres (Neon) would mean rewriting auth, RLS on `auth.uid()` and every PostgREST call; deploying from GitHub (auto-deploys on push; possible later with `vercel git connect`).
+
 ## Data, schema and seed
 
 What the data guarantees, how it is loaded, and the constraints that repeat API validation.

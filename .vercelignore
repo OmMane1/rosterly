@@ -1,0 +1,18 @@
+# `vercel deploy` uploads the working tree, so this repeats .gitignore rather than relying on the CLI
+# to read it. Above all: .env* holds the local keys and .logs/ the Supabase CLI's output.
+node_modules
+.next
+next-env.d.ts
+*.tsbuildinfo
+.env*
+docs/BRIEF.md
+.logs/
+supabase/.temp
+supabase/.branches
+.qodo/
+coverage
+.DS_Store
+*.pem
+npm-debug.log*
+/test-results/
+/playwright-report/
