@@ -2,6 +2,8 @@
 
 Recruiter search in plain English. A recruiter describes who they want ("senior Go engineers in Seattle"), Claude turns the brief into filters, and Postgres finds and ranks the people. Every filter shows as a chip the recruiter can correct. Recruiters can open profiles, shortlist people and save searches. Companies are isolated by row-level security, the free plan includes one search, and upgrades arrive only as signed Stripe webhooks.
 
+**Live:** https://rosterly-ecru.vercel.app. Sign in with one of the demo logins below. Everyone using a login shares that company's single free search, so once it's spent, a new search opens Upgrade instead.
+
 Next.js 16, Supabase (Postgres, Auth, RLS), Claude Haiku 5.5, Stripe webhooks, Tailwind and shadcn/ui. The 5,000 candidates are a **synthetic dataset** made by `scripts/gen-dataset.ts`: every person, employer, avatar and logo is invented. Code: UI in `app/(app)` and `components`, routes in `app/api`, logic in `lib/server`, schema in `supabase/migrations`.
 
 ## Run it
@@ -9,6 +11,8 @@ Next.js 16, Supabase (Postgres, Auth, RLS), Claude Haiku 5.5, Stripe webhooks, T
 With Node 24 and Docker running, export `ANTHROPIC_API_KEY` and `STRIPE_WEBHOOK_SECRET` (or put them in `.env.local`; an exported value wins). Then `make setup` (~2 min plus image pulls) and `make dev` (http://localhost:3000). Sign in as `recruiter@asterwell.test` or `recruiter@glenfold.test` with `rosterly-demo`. `make reset` reseeds. With `STRIPE_WEBHOOK_SECRET=whsec_rosterly_sample` (the sample's public secret), `npm run replay:stripe` replays the sample webhook events; `-- --resign` signs them with your own secret instead.
 
 Tests: `npm test` and `npm run test:integration`. With `make dev` running: `npm run test:e2e`, `test:security`, `test:ui`, `eval` and `bench`. `npm run gen:data && npm run gen:vocab` regenerates the dataset.
+
+**Hosting:** the app runs on Vercel (`vercel.json`, functions in `iad1`) and the database on a Supabase Cloud project in us-east-1. Ship it with `npx --no -- supabase db push --linked` for migrations, `npm run seed` with the production values exported (they win over `.env.local`) and `npx vercel deploy --prod`. The hosted project doesn't read `supabase/config.toml`, so sign-up is turned off there separately. Vercel holds the five variables (`SUPABASE_URL`, the publishable and secret keys, the model key and a webhook secret that isn't the sample's). DECISIONS.md has the details.
 
 ## How search works
 
