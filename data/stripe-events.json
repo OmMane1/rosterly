@@ -1,0 +1,44 @@
+{
+  "note": "Rosterly's webhook sample. POST each payload, byte for byte, to /api/billing/events with its Stripe-Signature header. The signatures use the public sample secret whsec_rosterly_sample and were made ahead of time, so the webhook accepts signatures of any age (npm run replay:stripe -- --resign re-signs them with your own secret).",
+  "events": [
+    {
+      "description": "asterwell subscribes",
+      "headers": {
+        "Stripe-Signature": "t=1791820800,v1=2fe9fa6abfd15b6dc0ccf5582b6f0384c470324aa198f5365bd14e5b8ad15c6e"
+      },
+      "payload": "{\"id\":\"evt_demo_asterwell_1\",\"object\":\"event\",\"api_version\":\"2026-09-30\",\"created\":1791820800,\"livemode\":false,\"type\":\"customer.subscription.created\",\"data\":{\"object\":{\"id\":\"sub_demo_asterwell\",\"object\":\"subscription\",\"customer\":\"cus_demo_asterwell\",\"status\":\"active\",\"metadata\":{\"company\":\"asterwell\"},\"current_period_end\":1794412800}}}"
+    },
+    {
+      "description": "the same event delivered again",
+      "headers": {
+        "Stripe-Signature": "t=1791820809,v1=2d87ca8bfda02266e18e0c59964b8d930fbd990f1a130294f2522f4637513d27"
+      },
+      "payload": "{\"id\":\"evt_demo_asterwell_1\",\"object\":\"event\",\"api_version\":\"2026-09-30\",\"created\":1791820800,\"livemode\":false,\"type\":\"customer.subscription.created\",\"data\":{\"object\":{\"id\":\"sub_demo_asterwell\",\"object\":\"subscription\",\"customer\":\"cus_demo_asterwell\",\"status\":\"active\",\"metadata\":{\"company\":\"asterwell\"},\"current_period_end\":1794412800}}}"
+    },
+    {
+      "description": "glenfold's newer event arrives first",
+      "headers": {
+        "Stripe-Signature": "t=1791820955,v1=c179b53071e9ddd6a76b69a055ef8420022fe903bc6e88040b4eb8230bad70da"
+      },
+      "payload": "{\"id\":\"evt_demo_glenfold_2\",\"object\":\"event\",\"api_version\":\"2026-09-30\",\"created\":1791820950,\"livemode\":false,\"type\":\"customer.subscription.updated\",\"data\":{\"object\":{\"id\":\"sub_demo_glenfold\",\"object\":\"subscription\",\"customer\":\"cus_demo_glenfold\",\"status\":\"active\",\"metadata\":{\"company\":\"glenfold\"},\"current_period_end\":1794412950}}}"
+    },
+    {
+      "description": "glenfold's older event arrives late",
+      "headers": {
+        "Stripe-Signature": "t=1791820960,v1=8ab8d177f9562827355421fa0b7c21de0503bc245bad69b3617352f62a175eab"
+      },
+      "payload": "{\"id\":\"evt_demo_glenfold_1\",\"object\":\"event\",\"api_version\":\"2026-09-30\",\"created\":1791820890,\"livemode\":false,\"type\":\"customer.subscription.created\",\"data\":{\"object\":{\"id\":\"sub_demo_glenfold\",\"object\":\"subscription\",\"customer\":\"cus_demo_glenfold\",\"status\":\"incomplete\",\"metadata\":{\"company\":\"glenfold\"},\"current_period_end\":1794412890}}}"
+    },
+    {
+      "description": "asterwell cancels",
+      "headers": {
+        "Stripe-Signature": "t=1791821041,v1=9a3997f0c68868d6c3e33aa6cfd75cba966a4e0e100b328b180dd4d7ff669a47"
+      },
+      "payload": "{\"id\":\"evt_demo_asterwell_2\",\"object\":\"event\",\"api_version\":\"2026-09-30\",\"created\":1791821040,\"livemode\":false,\"type\":\"customer.subscription.deleted\",\"data\":{\"object\":{\"id\":\"sub_demo_asterwell\",\"object\":\"subscription\",\"customer\":\"cus_demo_asterwell\",\"status\":\"canceled\",\"metadata\":{\"company\":\"asterwell\"},\"current_period_end\":1794413040}}}"
+    }
+  ],
+  "expected_plans_after": {
+    "asterwell": "free",
+    "glenfold": "paid"
+  }
+}

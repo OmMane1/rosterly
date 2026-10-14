@@ -1,0 +1,60 @@
+{
+  "name": "rosterly",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "24.x"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start -H 0.0.0.0 -p 3000",
+    "typecheck": "next typegen && tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:e2e": "vitest run --config vitest.e2e.config.ts",
+    "test:ui": "playwright test",
+    "test:security": "tsx --conditions=react-server scripts/security-check.ts",
+    "check:lockfile": "node scripts/check-lockfile.mjs",
+    "gen:data": "tsx scripts/gen-dataset.ts",
+    "gen:vocab": "tsx scripts/gen-vocabulary.ts",
+    "seed": "tsx scripts/seed.ts",
+    "eval": "tsx --conditions=react-server scripts/eval.ts",
+    "bench": "tsx --conditions=react-server scripts/bench.ts",
+    "replay:stripe": "tsx --conditions=react-server scripts/replay-stripe.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "0.131.0",
+    "@supabase/supabase-js": "2.117.2",
+    "@tanstack/react-query": "5.103.2",
+    "clsx": "2.1.1",
+    "lucide-react": "1.47.0",
+    "next": "16.3.8",
+    "radix-ui": "1.6.7",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "server-only": "0.0.1",
+    "stripe": "22.6.2",
+    "tailwind-merge": "3.7.0",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/node": "24.19.1",
+    "@types/pg": "8.23.1",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.7",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.3.8",
+    "pg": "8.23.1",
+    "supabase": "2.119.0",
+    "tailwindcss": "4.3.3",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3",
+    "vite": "8.3.4",
+    "vitest": "5.0.3"
+  }
+}

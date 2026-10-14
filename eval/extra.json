@@ -1,0 +1,23 @@
+[
+  {"category": "vague", "brief": "experienced data engineers in Atlanta", "filters": {"roles": ["Data Engineer"], "cities": ["Atlanta"], "years_min": 6}},
+  {"category": "vague", "brief": "entry-level recruiters who are open to work", "filters": {"roles": ["Recruiter"], "seniority": ["junior"], "open_to_work": true}},
+  {"category": "mapping", "brief": "senior+ DevOps engineers who know Terraform", "filters": {"roles": ["DevOps Engineer"], "seniority": ["senior", "staff"], "skills_all": ["Terraform"]}},
+  {"category": "mapping", "brief": "full-stack engineers in SF with over 8 years of experience", "filters": {"roles": ["Full Stack Engineer"], "cities": ["San Francisco"], "years_min": 9}},
+  {"category": "mapping", "brief": "product managers with a master's degree in Austin or Denver", "filters": {"roles": ["Product Manager"], "cities": ["Austin", "Denver"], "degrees": ["MBA", "MS"]}},
+  {"category": "mapping", "brief": "data engineers with 5 years of experience who know Spark", "filters": {"roles": ["Data Engineer"], "skills_all": ["Spark"], "years_min": 5}},
+  {"category": "alias", "brief": "Golang developers in NYC who know PostgreSQL", "filters": {"roles": ["Backend Engineer", "Data Engineer", "DevOps Engineer", "Frontend Engineer", "Full Stack Engineer", "Machine Learning Engineer", "Mobile Engineer"], "cities": ["New York"], "skills_all": ["Go", "Postgres"]}},
+  {"category": "trap", "brief": "DevOps engineers in Chicago who know Docker", "filters": {"roles": ["DevOps Engineer"], "cities": ["Chicago"], "skills_all": ["Docker"]}},
+  {"category": "trap", "brief": "data scientists who know R and Tableau", "filters": {"roles": ["Data Scientist"], "skills_all": ["R", "Tableau"]}},
+  {"category": "trap", "brief": "Java backend engineers in Seattle", "filters": {"roles": ["Backend Engineer"], "cities": ["Seattle"], "skills_all": ["Java"]}},
+  {"category": "trap", "brief": "machine learning engineers with LLM experience", "filters": {"roles": ["Machine Learning Engineer"], "skills_all": ["LLMs"]}},
+  {"category": "trap", "brief": "Python engineers in Boston", "filters": {"roles": ["Backend Engineer", "Data Engineer", "DevOps Engineer", "Frontend Engineer", "Full Stack Engineer", "Machine Learning Engineer", "Mobile Engineer"], "cities": ["Boston"], "skills_all": ["Python"]}},
+  {"category": "unanswerable", "brief": "remote frontend engineers who speak Spanish", "filters": {"roles": ["Frontend Engineer"], "unsupported": [{"text": "remote", "reason": "The candidate data has no remote, hybrid, on-site or relocation preference."}, {"text": "speak Spanish", "reason": "The candidate data has no languages."}]}},
+  {"category": "unanswerable", "brief": "engineering managers in Seattle", "filters": {"cities": ["Seattle"], "unsupported": [{"text": "engineering managers", "reason": "This role isn't one of the 13 in the candidate data."}]}},
+  {"category": "grounding", "brief": "data scientists in Portland", "filters": {"roles": ["Data Scientist"], "unsupported": [{"text": "in Portland", "reason": "All candidates are in one of 10 US cities, and this place isn't one of them."}]}},
+  {"category": "puffery", "brief": "rockstar 10x frontend ninjas in Los Angeles", "filters": {"roles": ["Frontend Engineer"], "cities": ["Los Angeles"], "ignored": ["rockstar", "10x", "ninjas"]}},
+  {"category": "everyone", "brief": "US-based account executives with a degree who know Salesforce", "filters": {"roles": ["Account Executive"], "skills_all": ["Salesforce"]}},
+  {"category": "exclusion", "brief": "backend engineers not in New York who don't know Java", "filters": {"roles": ["Backend Engineer"], "exclude": {"cities": ["New York"], "skills": ["Java"]}}},
+  {"category": "experience", "brief": "ex-startup marketing managers now at an enterprise", "filters": {"roles": ["Marketing Manager"], "experience": [{"company_type": "startup", "when": "past"}, {"company_type": "enterprise", "when": "current"}]}},
+  {"category": "language", "brief": "ingenieros backend en Austin", "expect": "subset", "filters": {"roles": ["Backend Engineer"], "cities": ["Austin"]}},
+  {"category": "contradiction", "brief": "junior engineers with 15+ years of experience", "filters": {"roles": ["Backend Engineer", "Data Engineer", "DevOps Engineer", "Frontend Engineer", "Full Stack Engineer", "Machine Learning Engineer", "Mobile Engineer"], "seniority": ["junior"], "years_min": 15}}
+]

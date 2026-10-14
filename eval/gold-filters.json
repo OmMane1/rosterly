@@ -1,0 +1,56 @@
+[
+  {
+    "brief": "senior Go engineers in Seattle",
+    "filters": {
+      "roles": ["Backend Engineer", "Data Engineer", "DevOps Engineer", "Frontend Engineer", "Full Stack Engineer", "Machine Learning Engineer", "Mobile Engineer"],
+      "seniority": ["senior"],
+      "cities": ["Seattle"],
+      "skills_all": ["Go"]
+    }
+  },
+  {
+    "brief": "data engineers who know Airflow and dbt",
+    "filters": { "roles": ["Data Engineer"], "skills_all": ["Airflow", "dbt"] }
+  },
+  {
+    "brief": "recruiters in Chicago who are open to work",
+    "filters": { "roles": ["Recruiter"], "cities": ["Chicago"], "open_to_work": true }
+  },
+  {
+    "brief": "machine learning engineers who studied at Carnegie Mellon",
+    "filters": { "roles": ["Machine Learning Engineer"], "schools": ["Carnegie Mellon University"] }
+  },
+  {
+    "brief": "product managers in Boston with an MBA",
+    "filters": { "roles": ["Product Manager"], "cities": ["Boston"], "degrees": ["MBA"] }
+  },
+  {
+    "brief": "staff Android engineers currently at a startup",
+    "filters": {
+      "roles": ["Backend Engineer", "Data Engineer", "DevOps Engineer", "Frontend Engineer", "Full Stack Engineer", "Machine Learning Engineer", "Mobile Engineer"],
+      "seniority": ["staff"],
+      "skills_all": ["Android"],
+      "experience": [{ "company_type": "startup", "when": "current" }]
+    }
+  },
+  {
+    "brief": "account executives in Texas who use Salesforce",
+    "filters": { "roles": ["Account Executive"], "states": ["TX"], "skills_all": ["Salesforce"] }
+  },
+  {
+    "brief": "full stack engineers who used to work at Halvorsen Bank",
+    "filters": { "roles": ["Full Stack Engineer"], "experience": [{ "employers": ["Halvorsen Bank"], "when": "past" }] }
+  },
+  {
+    "brief": "frontend engineers in Denver with 5 to 8 years of experience",
+    "filters": { "roles": ["Frontend Engineer"], "cities": ["Denver"], "years_min": 5, "years_max": 8 }
+  },
+  {
+    "brief": "data scientists in Miami with a security clearance",
+    "filters": {
+      "roles": ["Data Scientist"],
+      "cities": ["Miami"],
+      "unsupported": [{ "text": "with a security clearance", "reason": "The candidate data has no visa, citizenship or clearance status." }]
+    }
+  }
+]
