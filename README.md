@@ -1,5 +1,7 @@
 # Rosterly
 
+[![CI](https://github.com/OmMane1/rosterly/actions/workflows/ci.yml/badge.svg)](https://github.com/OmMane1/rosterly/actions/workflows/ci.yml)
+
 Recruiter search in plain English. A recruiter describes who they want ("senior Go engineers in Seattle"), Claude turns the brief into filters, and Postgres finds and ranks the people. Every filter shows as a chip the recruiter can correct. Recruiters can open profiles, shortlist people and save searches. Companies are isolated by row-level security, the free plan includes one search, and upgrades arrive only as signed Stripe webhooks.
 
 **Live:** https://rosterly-ecru.vercel.app. Sign in with one of the demo logins below. Everyone using a login shares that company's single free search, so once it's spent, a new search opens Upgrade instead.

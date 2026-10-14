@@ -1,0 +1,60 @@
+# CI (DECISIONS.md "CI on GitHub Actions"). `checks` is the fast gate every change needs (CLAUDE.md §
+# Testing rules). `stack` runs the contract target `make setup` on a clean Linux runner, then the
+# suites that need local Supabase and the production server. No model key is configured, so the
+# tests that call the model skip and say so; the webhook uses the sample's public secret.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NEXT_TELEMETRY_DISABLED: '1'
+
+jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run check:lockfile
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+
+  stack:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      STRIPE_WEBHOOK_SECRET: whsec_rosterly_sample
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: make setup
+      - run: npm run test:integration
+      - name: Start the production server
+        run: |
+          nohup npm start > "$RUNNER_TEMP/next.log" 2>&1 &
+          for _ in $(seq 60); do curl -fs -o /dev/null http://localhost:3000/login && exit 0; sleep 1; done
+          cat "$RUNNER_TEMP/next.log"; exit 1
+      - run: npm run test:e2e
+      - run: npm run test:security
+      - name: Server log
+        if: failure()
+        run: cat "$RUNNER_TEMP/next.log" || true
